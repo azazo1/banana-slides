@@ -151,7 +151,10 @@ app = create_app()
 
 if __name__ == '__main__':
     # Run development server
-    port = int(os.getenv('PORT', 5000))
+    if os.getenv("IN_DOCKER", "0") == "1":
+        port = 5000 # 在 docker 内部部署时始终使用 5000 端口.
+    else:
+        port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
     logging.info(
