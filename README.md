@@ -235,7 +235,7 @@ npm install -g rust-just
 cargo [b]install just # 需要 rust 环境
 choco install just # windows
 scoop install just # windows
-# 或者直接下载二进制可执行文件 (参考官网按照教程):
+# 或者直接下载二进制可执行文件 (参考官网安装教程):
 # 创建 ~/bin
 mkdir -p ~/bin
 # 下载并解压 just 到 ~/bin/just
