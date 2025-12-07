@@ -16,8 +16,8 @@ class Settings(db.Model):
     image_aspect_ratio = db.Column(db.String(10), nullable=False, default='16:9')  # 图像比例: 16:9, 4:3, 1:1
     max_description_workers = db.Column(db.Integer, nullable=False, default=5)  # 描述生成最大工作线程数
     max_image_workers = db.Column(db.Integer, nullable=False, default=8)  # 图像生成最大工作线程数
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         """Convert to dictionary"""
