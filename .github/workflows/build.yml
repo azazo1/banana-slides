@@ -123,6 +123,13 @@ jobs:
           copy_artifact "banana-slides-macos-applesilicon" "banana-slides" "banana-slides-macos-applesilicon"
           copy_artifact "banana-slides-windows-x64" "banana-slides" "banana-slides-windows-x64.exe"
 
+          # Package Frontend Assets
+          if [ -d "artifacts/frontend-dist" ]; then
+            cd artifacts/frontend-dist
+            zip -r ../../release_assets/frontend-dist.zip .
+            cd ../..
+          fi
+
           echo "Release Assets:"
           ls -l release_assets/
 
