@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "banana-slides"
 version = "0.1.0"
@@ -20,3 +24,9 @@ dependencies = [
 
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+
+[tool.setuptools]
+package-dir = {"" = "backend"}
+
+[tool.setuptools.packages.find]
+where = ["backend"]
