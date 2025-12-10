@@ -12,7 +12,7 @@ import sqlite3
 # Load environment variables BEFORE importing anything else
 load_dotenv()
 
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from models import db
 from config import Config
@@ -45,24 +45,31 @@ def set_sqlite_pragma(dbapi_conn, connection_record):
 def create_app():
     """Application factory"""
     app = Flask(__name__)
-    
+
     # Load configuration from Config class
     app.config.from_object(Config)
-    
+
     # Override with environment-specific paths (use absolute path)
-    backend_dir = os.path.dirname(os.path.abspath(__file__))
-    instance_dir = os.path.join(backend_dir, 'instance')
+    if getattr(sys, 'frozen', False):
+        # Running as executable
+        app_dir = os.path.dirname(sys.executable)
+        instance_dir = os.path.join(app_dir, 'instance')
+        upload_folder = os.path.join(app_dir, 'uploads')
+    else:
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        instance_dir = os.path.join(backend_dir, 'instance')
+        project_root = os.path.dirname(backend_dir)
+        upload_folder = os.path.join(project_root, 'uploads')
+
     os.makedirs(instance_dir, exist_ok=True)
-    
+
     db_path = os.path.join(instance_dir, 'database.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    
+
     # Ensure upload folder exists
-    project_root = os.path.dirname(backend_dir)
-    upload_folder = os.path.join(project_root, 'uploads')
     os.makedirs(upload_folder, exist_ok=True)
     app.config['UPLOAD_FOLDER'] = upload_folder
-    
+
     # CORS configuration (parse from environment)
     raw_cors = os.getenv('CORS_ORIGINS', 'http://localhost:3000')
     if raw_cors.strip() == '*':
@@ -70,7 +77,7 @@ def create_app():
     else:
         cors_origins = [o.strip() for o in raw_cors.split(',') if o.strip()]
     app.config['CORS_ORIGINS'] = cors_origins
-    
+
     # Initialize logging (log to stdout so Docker can capture it)
     log_level = getattr(logging, app.config['LOG_LEVEL'], logging.INFO)
     logging.basicConfig(
@@ -78,7 +85,7 @@ def create_app():
         format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
         handlers=[logging.StreamHandler(sys.stdout)],
     )
-    
+
     # 设置第三方库的日志级别，避免过多的DEBUG日志
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
     logging.getLogger('httpcore').setLevel(logging.WARNING)
@@ -89,7 +96,7 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     CORS(app, origins=cors_origins)
-    
+
     # Register blueprints
     app.register_blueprint(project_bp)
     app.register_blueprint(page_bp)
@@ -100,29 +107,40 @@ def create_app():
     app.register_blueprint(material_bp)
     app.register_blueprint(material_global_bp)
     app.register_blueprint(reference_file_bp, url_prefix='/api/reference-files')
-    
+
     with app.app_context():
         db.create_all()
-    
+
     # Health check endpoint
     @app.route('/health')
     def health_check():
         return {'status': 'ok', 'message': 'Banana Slides API is running'}
-    
-    # Root endpoint
-    @app.route('/')
-    def index():
-        return {
-            'name': 'Banana Slides API',
-            'version': '1.0.0',
-            'description': 'AI-powered PPT generation service',
-            'endpoints': {
-                'health': '/health',
-                'api_docs': '/api',
-                'projects': '/api/projects'
-            }
-        }
-    
+
+    # Root endpoint and Static Files Serving
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        if getattr(sys, 'frozen', False):
+            base_dir = sys._MEIPASS
+            static_folder = os.path.join(base_dir, 'static')
+            if path != "" and os.path.exists(os.path.join(static_folder, path)):
+                return send_from_directory(static_folder, path)
+            else:
+                return send_from_directory(static_folder, 'index.html')
+        else:
+            if path == '':
+                return {
+                    'name': 'Banana Slides API',
+                    'version': '1.0.0',
+                    'description': 'AI-powered PPT generation service',
+                    'endpoints': {
+                        'health': '/health',
+                        'api_docs': '/api',
+                        'projects': '/api/projects'
+                    }
+                }
+            return {'error': 'Not Found'}, 404
+
     return app
 
 
@@ -134,7 +152,7 @@ if __name__ == '__main__':
     # Run development server
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
-    
+
     logging.info(
         "\n"
         "╔══════════════════════════════════════╗\n"
@@ -147,7 +165,7 @@ if __name__ == '__main__':
         f"Database: {app.config['SQLALCHEMY_DATABASE_URI']}\n"
         f"Uploads: {app.config['UPLOAD_FOLDER']}"
     )
-    
+
     # Enable reloader for hot reload in development
     # Using absolute paths for database, so WSL path issues should not occur
     app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=True)
